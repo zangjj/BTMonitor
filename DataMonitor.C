@@ -210,6 +210,23 @@ private:
    TGCompositeFrame *NUDF2;
    TRootEmbeddedCanvas *NUDF2_Canvas1;
    TRootEmbeddedCanvas *NUDF2_Canvas2;
+  
+   TGCompositeFrame *GlobalMainFrame;
+   TGCompositeFrame *GlobalPlotFrame;
+   TGCompositeFrame *GlobalButtonFrame;
+   TGCompositeFrame *GlobalPlotLeftFrame;
+   TGCompositeFrame *GlobalPlotRightFrame;
+   
+   TRootEmbeddedCanvas *Global_TopLeft_Canvas;
+   TRootEmbeddedCanvas *Global_TopRight_Canvas;
+   TRootEmbeddedCanvas *Global_BottomLeft_Canvas;
+   TRootEmbeddedCanvas *Global_BottomRight_Canvas;
+   
+   TGNumberEntry *GlobaleventnumberEntry;
+   TGTextButton *GlobalGotoEventButton;
+   TGTextButton *GlobalPreviousEventButton;
+   TGTextButton *GlobalNextEventButton;
+
    TH1F *h1;
    TH2F *h2;
    TFile *file;
@@ -269,6 +286,9 @@ public:
    void PSDDrawOneEvent();
    void PSDPreEvent();
    void PSDNextEvent();
+   void GlobalDrawOneEvent();
+   void GlobalPreEvent();
+   void GlobalNextEvent();
    void CloseWindow();
    void DoButton();
    void InitTree();
@@ -472,6 +492,44 @@ MainFrame::MainFrame(const TGWindow *p, UInt_t w, UInt_t h)
 
    TGLayoutHints *fLT = new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,
                                                     0, 0, 2, 2);
+   fTableFrame = fMainTab->AddTab("Global");
+   GlobalMainFrame = new TGCompositeFrame(fTableFrame,60,60,kVerticalFrame);
+
+   GlobalPlotFrame = new TGCompositeFrame(GlobalMainFrame,60,60,kHorizontalFrame);
+   GlobalPlotLeftFrame  = new TGCompositeFrame(GlobalPlotFrame,60,60,kVerticalFrame);
+   Global_TopLeft_Canvas = new TRootEmbeddedCanvas("globaltopleft",GlobalPlotLeftFrame,100,100);
+   //Global_BottomLeft_Canvas = new TRootEmbeddedCanvas("globalbottomleft",GlobalPlotLeftFrame,100,100);   
+   GlobalPlotLeftFrame->AddFrame(Global_TopLeft_Canvas,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   //GlobalPlotLeftFrame->AddFrame(Global_BottomLeft_Canvas,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   GlobalPlotRightFrame = new TGCompositeFrame(GlobalPlotFrame,60,60,kVerticalFrame);
+   Global_TopRight_Canvas = new TRootEmbeddedCanvas("globaltopright",GlobalPlotRightFrame,100,100);
+   //Global_BottomRight_Canvas = new TRootEmbeddedCanvas("globalbottomright",GlobalPlotRightFrame,100,100);
+   GlobalPlotRightFrame->AddFrame(Global_TopRight_Canvas,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   //GlobalPlotRightFrame->AddFrame(Global_BottomRight_Canvas,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   GlobalPlotFrame->AddFrame(GlobalPlotLeftFrame,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   GlobalPlotFrame->AddFrame(GlobalPlotRightFrame,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   
+   GlobalButtonFrame = new TGCompositeFrame(GlobalMainFrame,60,20,kHorizontalFrame | kSunkenFrame);
+
+   GlobaleventnumberEntry = new TGNumberEntry(GlobalButtonFrame,0,20,12, (TGNumberEntry::EStyle) 0);
+   GlobalGotoEventButton = new TGTextButton(GlobalButtonFrame,"Goto",6);
+   GlobalGotoEventButton->Connect("Clicked()","MainFrame",this,"GlobalDrawOneEvent()");
+   GlobalPreviousEventButton = new TGTextButton(GlobalButtonFrame,"Previous",7);
+   GlobalPreviousEventButton->Connect("Clicked()","MainFrame",this,"GlobalPreEvent()");
+   GlobalNextEventButton = new TGTextButton(GlobalButtonFrame,"Next",8);
+   GlobalNextEventButton->Connect("Clicked()","MainFrame",this,"GlobalNextEvent()");
+   TGLabel *label_global_event = new TGLabel(GlobalButtonFrame,"Event:",myGC(),myfont->GetFontStruct());
+
+   GlobalButtonFrame->AddFrame(label_global_event,new TGLayoutHints(kLHintsTop|kLHintsLeft,2,2,2,2));
+   GlobalButtonFrame->AddFrame(GlobaleventnumberEntry,new TGLayoutHints(kLHintsTop|kLHintsLeft,2,2,2,2));
+   GlobalButtonFrame->AddFrame(GlobalGotoEventButton,new TGLayoutHints(kLHintsTop|kLHintsLeft,2,0,2,2));
+   GlobalButtonFrame->AddFrame(GlobalPreviousEventButton,new TGLayoutHints(kLHintsTop|kLHintsLeft,2,2,2,2));
+   GlobalButtonFrame->AddFrame(GlobalNextEventButton,new TGLayoutHints(kLHintsTop|kLHintsLeft,2,2,2,2));
+   
+   GlobalMainFrame->AddFrame(GlobalPlotFrame,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5));
+   GlobalMainFrame->AddFrame(GlobalButtonFrame,new TGLayoutHints(kLHintsBottom|kLHintsRight,0,0,1,0));
+   fTableFrame->AddFrame(GlobalMainFrame,new TGLayoutHints(kLHintsTop|kLHintsLeft|kLHintsExpandX|kLHintsExpandY,5,5,5,5)); 
+ 
    fMain->AddFrame(fMainTab,fLT);
 
    fMain->SetWindowName("DAMPE Data Monitor");
@@ -761,6 +819,8 @@ void MainFrame::DrawOneEvent()
 
   int CurrentEventNumber = BGOeventnumberEntry->GetIntNumber();
   PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
+
   gStyle->SetOptStat(0);
   tree->GetEntry(CurrentEventNumber);
   for(int itt=0;itt<14;++itt) {
@@ -810,6 +870,7 @@ void MainFrame::PreEvent()
    int CurrentEventNumber = BGOeventnumberEntry->GetIntNumber()-1;
    BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
    PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+   GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
    DrawOneEvent();
 }
 void MainFrame::NextEvent()
@@ -817,12 +878,14 @@ void MainFrame::NextEvent()
    int CurrentEventNumber = BGOeventnumberEntry->GetIntNumber()+1;
    BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
    PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+   GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
    DrawOneEvent();
 }
 void MainFrame::PSDDrawOneEvent()
 {
   int CurrentEventNumber = PSDeventnumberEntry->GetIntNumber();
   BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
   DrawOneEvent();
 }
 void MainFrame::PSDPreEvent()
@@ -830,6 +893,7 @@ void MainFrame::PSDPreEvent()
   int CurrentEventNumber = PSDeventnumberEntry->GetIntNumber()-1;
   BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
   PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
   DrawOneEvent();
 }
 void MainFrame::PSDNextEvent()
@@ -837,8 +901,34 @@ void MainFrame::PSDNextEvent()
   int CurrentEventNumber = PSDeventnumberEntry->GetIntNumber()+1;
   BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
   PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
   DrawOneEvent();
 }
+void MainFrame::GlobalDrawOneEvent()
+{
+  int CurrentEventNumber = GlobaleventnumberEntry->GetIntNumber();
+  BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  DrawOneEvent();
+}
+void MainFrame::GlobalPreEvent()
+{
+  int CurrentEventNumber = PSDeventnumberEntry->GetIntNumber()-1;
+  BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
+  DrawOneEvent();
+}
+void MainFrame::GlobalNextEvent()
+{
+  int CurrentEventNumber = PSDeventnumberEntry->GetIntNumber()+1;
+  BGOeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  PSDeventnumberEntry->SetIntNumber(CurrentEventNumber);
+  GlobaleventnumberEntry->SetIntNumber(CurrentEventNumber);
+  DrawOneEvent();
+}
+
+
 void MainFrame::LoadBuffer(const char *buffer)
 {
   GeneralTextView->AddLineFast(buffer);
